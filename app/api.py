@@ -34,8 +34,6 @@ def substract(op_1, op_2):
 
 @api_application.route("/calc/sqrt/<value>", methods=["GET"])
 def sqrt(value):
-@api_application.route("/calc/sqrt/<value>", methods=["GET"])
-def sqrt_endpoint(value):
     try:
         number = util.convert_to_number(value)
         result = CALCULATOR.sqrt(number)
