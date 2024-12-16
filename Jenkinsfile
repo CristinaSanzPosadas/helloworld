@@ -23,7 +23,7 @@ pipeline {
         }
 
         stage('Git') {
-            agent {label 'agent'}
+            agent {label 'principal'}
             steps {
                 bat """
                 whoami
@@ -31,11 +31,12 @@ pipeline {
                 echo ${env.WORKSPACE}
                 """
                 git 'https://github.com/CristinaSanzPosadas/helloworld.git'
+                stash includes: '**', name: 'code'
             }
         }
         
         stage('Verify code') {
-            agent {label 'agent'}
+            agent {label 'principal'}
             steps {
                 bat """
                 whoami
@@ -73,6 +74,7 @@ pipeline {
         stage('Setup Virtual Environment') {
             agent {label 'agent'}
             steps {
+                unstash 'code' 
                 bat """
                 whoami
                 hostname
@@ -90,6 +92,7 @@ pipeline {
                 stage('Unit testing') {
                     agent {label 'agent'}
                     steps {
+                        unstash 'code' 
                         bat """
                         whoami
                         hostname
@@ -104,6 +107,7 @@ pipeline {
                 stage('Service testing') {
                     agent {label 'agent'}
                     steps {
+                        unstash 'code' 
                         bat """
                         whoami
                         hostname
@@ -158,7 +162,7 @@ pipeline {
                 }
             }
             script {
-                echo "Limpiando workspace..."
+                echo "Limpiando workspace"
                 node {
                     cleanWs()
                 }
