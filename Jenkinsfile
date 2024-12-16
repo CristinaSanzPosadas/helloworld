@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent none
 
     environment {
         PYTHON_PATH = '.'
@@ -11,37 +11,73 @@ pipeline {
     stages {
 
         stage('Echo') {
+            agent {label 'principal'}
             steps {
+                bat """
+                whoami
+                hostname
+                echo ${env.WORKSPACE}
+                """
                 echo 'Ejecutando pipeline'
             }
         }
 
         stage('Git') {
+            agent {label 'agent'}
             steps {
+                bat """
+                whoami
+                hostname
+                echo ${env.WORKSPACE}
+                """
                 git 'https://github.com/CristinaSanzPosadas/helloworld.git'
             }
         }
         
         stage('Verify code') {
+            agent {label 'agent'}
             steps {
+                bat """
+                whoami
+                hostname
+                echo ${env.WORKSPACE}
+                """
                 bat 'dir'
             }
         }
         
         stage('Verify Workspace') {
+            agent {label 'principal'}
             steps {
+                bat """
+                whoami
+                hostname
+                echo ${env.WORKSPACE}
+                """
                 echo "${env.WORKSPACE}"
             }
         }
         
         stage('Build') {
+            agent {label 'principal'}
             steps {
+                bat """
+                whoami
+                hostname
+                echo ${env.WORKSPACE}
+                """
                 echo 'Construyendo'
             }
         }
         
         stage('Setup Virtual Environment') {
+            agent {label 'agent'}
             steps {
+                bat """
+                whoami
+                hostname
+                echo ${env.WORKSPACE}
+                """
                 bat """
                 ${env.PYTHON_LOCAL} -m venv venv
                 venv\\Scripts\\pip install pytest flask
@@ -52,7 +88,13 @@ pipeline {
         stage('Tests') {
             parallel {
                 stage('Unit testing') {
+                    agent {label 'agent'}
                     steps {
+                        bat """
+                        whoami
+                        hostname
+                        echo ${env.WORKSPACE}
+                        """
                         echo 'Ejecutando pruebas unitarias'
                         bat """
                         venv\\Scripts\\python -m pytest --junitxml=result-unit.xml test\\unit
@@ -60,7 +102,13 @@ pipeline {
                     }
                 }
                 stage('Service testing') {
+                    agent {label 'agent'}
                     steps {
+                        bat """
+                        whoami
+                        hostname
+                        echo ${env.WORKSPACE}
+                        """
                         echo 'Ejecutando pruebas de servicio'
                         script {
                             bat """
@@ -80,7 +128,7 @@ pipeline {
                             """
                         }
                         bat """
-                        echo "Ejecutando pruebas"
+                        echo "Ejecutando pruebas..."
                         venv\\Scripts\\python -m pytest --junitxml=result-tests.xml test\\rest
                         """
                     }
@@ -89,9 +137,34 @@ pipeline {
         }
 
         stage('Results JUnit') {
+            agent {label 'agent'}
             steps {
+                bat """
+                whoami
+                hostname
+                echo ${env.WORKSPACE}
+                """
                 junit 'result-tests.xml'
             }
         }
     }
+
+    post {
+        always {
+            script {
+                node {
+                bat 'taskkill /f /im python.exe || echo "No Flask process running"'
+                bat 'taskkill /f /im java.exe || echo "No Wiremock process running"'
+                }
+            }
+            script {
+                echo "Limpiando workspace..."
+                node {
+                    cleanWs()
+                }
+            }
+        }
+    }
+
+
 }
