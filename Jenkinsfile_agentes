@@ -157,6 +157,7 @@ pipeline {
                     bat 'wmic process where "name=\'java.exe\' and CommandLine like \'%wiremock%\'" call terminate > nul 2>&1 || echo "No Wiremock process running"'
                 }
                 script {
+                    sleep(time: 5, unit: 'SECONDS')
                     echo "Cleaning workspace"
                     cleanWs()
                 }
