@@ -29,6 +29,12 @@ class Calculator:
         self.check_types(x, y)
         return x ** y
 
+    def sqrt(self, x):
+        self.check_types(x, x)
+        if x < 0:
+            raise ValueError("Is not a valid value")
+        return math.sqrt(x)
+
     def check_types(self, x, y):
         if not isinstance(x, (int, float)) or                                                not isinstance(y, (int, float)):
             raise TypeError("Parameters must be numbers")
