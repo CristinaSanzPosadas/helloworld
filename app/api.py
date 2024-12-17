@@ -44,9 +44,9 @@ def multiply(op_1, op_2):
 def divide(op_1, op_2):
     try:
         num_1, num_2 = convert_to_number(op_1), convert_to_number(op_2)
-        if num_2 == 0:
-            return ("Division by zero is not allowed", http.client.NOT_ACCEPTABLE, HEADERS)
         return ("{}".format(CALCULATOR.divide(num_1, num_2)), http.client.OK, HEADERS)
+    except DivisionError as e:
+        return (str(e), http.client.NOT_ACCEPTABLE, HEADERS)
     except TypeError as e:
         return (str(e), http.client.BAD_REQUEST, HEADERS)
 
