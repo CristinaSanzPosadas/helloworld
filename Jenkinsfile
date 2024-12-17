@@ -84,7 +84,9 @@ pipeline {
         }
         stage('Results JUnit') {
             steps {
-                junit 'result-tests.xml'
+                junit '**/result-*.xml'
+            }
+        }
             }
         }
     }
