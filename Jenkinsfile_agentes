@@ -87,56 +87,53 @@ pipeline {
             }
         }
 
-        stage('Tests') {
-            parallel {
-                stage('Unit testing') {
-                    agent {label 'agent'}
-                    steps {
-                        unstash 'code' 
-                        bat """
-                        whoami
-                        hostname
-                        echo ${env.WORKSPACE}
-                        """
-                        echo 'Ejecutando pruebas unitarias'
-                        bat """
-                        venv\\Scripts\\python -m pytest --junitxml=result-unit.xml test\\unit
-                        """
-                    }
+        stage('Unit Testing') {
+            agent { label 'agent' }
+            steps {
+                unstash 'code'
+                bat """
+                whoami
+                hostname
+                echo ${env.WORKSPACE}
+                """
+                echo 'Ejecutando pruebas unitarias'
+                bat """
+                venv\\Scripts\\python -m pytest --junitxml=result-unit.xml test\\unit
+                """
+            }
+        }
+
+        stage('Service Testing') {
+            agent { label 'agent' }
+            steps {
+                unstash 'code'
+                bat """
+                whoami
+                hostname
+                echo ${env.WORKSPACE}
+                """
+                echo 'Ejecutando pruebas de servicio'
+                script {
+                    bat """
+                    set FLASK_APP=app.api:api_application
+                    start /B venv\\Scripts\\python -m flask run --port=5000
+                    for /L %%i in (1,1,10) do (
+                        netstat -an | findstr :5000 && exit 0 || ping -n 2 127.0.0.1 > nul
+                    )
+                    """
                 }
-                stage('Service testing') {
-                    agent {label 'agent'}
-                    steps {
-                        unstash 'code' 
-                        bat """
-                        whoami
-                        hostname
-                        echo ${env.WORKSPACE}
-                        """
-                        echo 'Ejecutando pruebas de servicio'
-                        script {
-                            bat """
-                            set FLASK_APP=app.api:api_application
-                            start /B venv\\Scripts\\python -m flask run --port=5000
-                            for /L %%i in (1,1,10) do (
-                                netstat -an | findstr :5000 && exit 0 || ping -n 2 127.0.0.1 > nul
-                            )
-                            """
-                        }
-                        script {
-                            bat """
-                            start /B java -jar ${env.WIREMOCK_LOCAL} --port 9090 --root-dir=${env.WIREMOCK_DIR}
-                            for /L %%i in (1,1,10) do (
-                                netstat -an | findstr :9090 && exit 0 || ping -n 2 127.0.0.1 > nul
-                            )
-                            """
-                        }
-                        bat """
-                        echo "Ejecutando pruebas..."
-                        venv\\Scripts\\python -m pytest --junitxml=result-tests.xml test\\rest
-                        """
-                    }
+                script {
+                    bat """
+                    start /B java -jar ${env.WIREMOCK_LOCAL} --port 9090 --root-dir=${env.WIREMOCK_DIR}
+                    for /L %%i in (1,1,10) do (
+                        netstat -an | findstr :9090 && exit 0 || ping -n 2 127.0.0.1 > nul
+                    )
+                    """
                 }
+                bat """
+                echo "Ejecutando pruebas..."
+                venv\\Scripts\\python -m pytest --junitxml=result-tests.xml test\\rest
+                """
             }
         }
 
