@@ -148,7 +148,7 @@ pipeline {
                 hostname
                 echo ${env.WORKSPACE}
                 """
-                junit 'result-tests.xml'
+                junit '**/result-*.xml'
             }
         }
 
