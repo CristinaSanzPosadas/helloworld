@@ -153,18 +153,24 @@ pipeline {
         }
     }
 
-    post {
-        always {
-            script {
-                node {
-                bat 'taskkill /f /im python.exe || echo "No Flask process running"'
-                bat 'taskkill /f /im java.exe || echo "No Wiremock process running"'
+    stage('Cleanup') {
+            agent {label 'agent'}
+            steps {
+                script {
+                    bat 'taskkill /f /im python.exe || echo "No Flask process running"'
+                    bat 'taskkill /f /im java.exe || echo "No Wiremock process running"'
                 }
-                echo "Limpiando workspace"
-                node {
+                script {
+                    echo "Cleaning workspace"
                     cleanWs()
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            echo 'End'
         }
     }
 
