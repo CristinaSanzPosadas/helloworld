@@ -158,13 +158,17 @@ pipeline {
             script {
                 node {
                     bat '''
-                    tasklist | findstr flask.exe && taskkill /f /im flask.exe || echo 'No Flask process running'
-                    tasklist | findstr java.exe && taskkill /f /im java.exe || echo 'No Wiremock process running'
+                    tasklist | findstr flask.exe && taskkill /f /im flask.exe /t || echo 'No Flask process running'
+                    tasklist | findstr java.exe && taskkill /f /im java.exe /t || echo 'No Wiremock process running'
+                    '''
+                    bat '''
+                    netstat -ano | findstr :5000 && for /f "tokens=5" %%a in ('netstat -ano ^| findstr :5000') do taskkill /PID %%a /F
+                    netstat -ano | findstr :9090 && for /f "tokens=5" %%a in ('netstat -ano ^| findstr :9090') do taskkill /PID %%a /F
                     '''
                 }
             }
             script {
-                bat 'timeout /t 5 > nul'
+                bat 'rmdir /s /q venv || echo "No virtual environment to remove"'
                 echo "Limpiando workspace"
                 node {
                     cleanWs()
