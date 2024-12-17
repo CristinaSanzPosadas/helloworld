@@ -157,8 +157,10 @@ pipeline {
         always {
             script {
                 node {
-                bat 'taskkill /f /im python.exe || echo "No Flask process running"'
-                bat 'taskkill /f /im java.exe || echo "No Wiremock process running"'
+                    bat '''
+                    taskkill /f /im flask.exe || echo "No Flask process running"
+                    taskkill /f /im java.exe || echo "No Wiremock process running"
+                    '''
                 }
             }
             script {
