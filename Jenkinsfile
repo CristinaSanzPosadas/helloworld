@@ -87,7 +87,5 @@ pipeline {
                 junit '**/result-*.xml'
             }
         }
-            }
-        }
     }
 }
