@@ -153,8 +153,8 @@ pipeline {
             agent {label 'agent'}
             steps {
                 script {
-                    bat 'taskkill /f /im python.exe || echo "No Flask process running"'
-                    bat 'taskkill /f /im java.exe || echo "No Wiremock process running"'
+                    bat 'wmic process where "name=\'python.exe\' and CommandLine like \'%flask%\'" call terminate > nul 2>&1 || echo "No Flask process running"'
+                    bat 'wmic process where "name=\'java.exe\' and CommandLine like \'%wiremock%\'" call terminate > nul 2>&1 || echo "No Wiremock process running"'
                 }
                 script {
                     echo "Cleaning workspace"
