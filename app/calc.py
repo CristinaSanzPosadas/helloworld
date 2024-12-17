@@ -22,7 +22,6 @@ class Calculator:
         self.check_types(x, y)
         if y == 0:
            raise DivisionError("Is not a valid value")
-
         return x / y
 
     def power(self, x, y):
