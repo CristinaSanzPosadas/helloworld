@@ -151,9 +151,8 @@ pipeline {
                 junit 'result-tests.xml'
             }
         }
-    }
 
-    stage('Cleanup') {
+        stage('Cleanup') {
             agent {label 'agent'}
             steps {
                 script {
@@ -166,7 +165,6 @@ pipeline {
                 }
             }
         }
-    }
 
     post {
         always {
