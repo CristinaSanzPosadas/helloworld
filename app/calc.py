@@ -32,7 +32,7 @@ class Calculator:
         self.check_types(x, x)
         if x < 0:
             raise ValueError("Is not a valid value")
-        return math.sqrt(x)
+        return int(math.sqrt(x))
 
     def check_types(self, x, y):
         if not isinstance(x, (int, float)) or                                                not isinstance(y, (int, float)):
