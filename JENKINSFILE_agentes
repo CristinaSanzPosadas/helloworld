@@ -30,7 +30,7 @@ pipeline {
                 hostname
                 echo ${env.WORKSPACE}
                 """
-                git 'https://github.com/CristinaSanzPosadas/helloworld.git'
+                git branch: 'develop', url: 'https://github.com/CristinaSanzPosadas/helloworld.git'
                 stash includes: '**', name: 'code'
             }
         }

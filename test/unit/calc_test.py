@@ -61,6 +61,17 @@ class TestCalculate(unittest.TestCase):
         self.assertEqual(0, self.calc.substract(0, 0))
         self.assertEqual(0, self.calc.substract(0, 0))
         self.assertRaises(TypeError, self.calc.substract, "0", 0)
+
+    def test_sqrt_method_returns_correct_result(self):
+        self.assertEqual(2, self.calc.sqrt(4))
+        self.assertEqual(3, self.calc.sqrt(9))
+        self.assertEqual(0, self.calc.sqrt(0))
+        self.assertRaises(ValueError, self.calc.sqrt, -1)
+
+    def test_divide_division_error(self):
+        with self.assertRaises(Exception) as context:
+            self.calc.divide(10, 0)
+        self.assertTrue("Is not a valid value" in str(context.exception))
         
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()
