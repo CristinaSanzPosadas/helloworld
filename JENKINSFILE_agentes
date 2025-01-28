@@ -4,13 +4,12 @@ pipeline {
     environment {
         PYTHON_PATH = '.'
         PYTHON_LOCAL = 'C:\\Users\\crist\\AppData\\Local\\Programs\\Python\\Python313\\python.exe'
-        WIREMOCK_LOCAL = 'C:\\Users\\crist\\Wiremock\\wiremock-standalone-3.10.0.jar'
-        WIREMOCK_DIR = 'C:\\Users\\crist\\Wiremock'
+        JMETER_PATH = 'C:\\Users\\crist\\Downloads\\apache-jmeter-5.6.3\\apache-jmeter-5.6.3\\bin\\jmeter.bat'
     }
 
     stages {
 
-        stage('Echo') {
+        stage('Get Code') {
             agent {label 'principal'}
             steps {
                 bat """
@@ -18,56 +17,8 @@ pipeline {
                 hostname
                 echo ${env.WORKSPACE}
                 """
-                echo 'Ejecutando pipeline'
-            }
-        }
-
-        stage('Git') {
-            agent {label 'principal'}
-            steps {
-                bat """
-                whoami
-                hostname
-                echo ${env.WORKSPACE}
-                """
-                git branch: 'develop', url: 'https://github.com/CristinaSanzPosadas/helloworld.git'
+                git 'https://github.com/CristinaSanzPosadas/helloworld.git'
                 stash includes: '**', name: 'code'
-            }
-        }
-        
-        stage('Verify code') {
-            agent {label 'principal'}
-            steps {
-                bat """
-                whoami
-                hostname
-                echo ${env.WORKSPACE}
-                """
-                bat 'dir'
-            }
-        }
-        
-        stage('Verify Workspace') {
-            agent {label 'principal'}
-            steps {
-                bat """
-                whoami
-                hostname
-                echo ${env.WORKSPACE}
-                """
-                echo "${env.WORKSPACE}"
-            }
-        }
-        
-        stage('Build') {
-            agent {label 'principal'}
-            steps {
-                bat """
-                whoami
-                hostname
-                echo ${env.WORKSPACE}
-                """
-                echo 'Construyendo'
             }
         }
         
@@ -79,17 +30,29 @@ pipeline {
                 whoami
                 hostname
                 echo ${env.WORKSPACE}
-                """
-                bat """
                 ${env.PYTHON_LOCAL} -m venv venv
-                venv\\Scripts\\pip install pytest flask
+                venv\\Scripts\\pip install pytest flask flake8 bandit coverage
                 """
             }
         }
-
         stage('Tests') {
             parallel {
-                stage('Unit testing') {
+                stage('Unit') {
+                    agent {label 'agent'}
+                    steps {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
+                            echo 'Ejecutando pruebas unitarias'
+                            bat """
+                            whoami
+                            hostname
+                            echo ${env.WORKSPACE}
+                            venv\\Scripts\\python -m coverage run -m pytest --junitxml=result-unit.xml test\\unit
+                            """
+                            junit '**/result-unit.xml'
+                        }
+                    }
+                }
+                stage('Rest') {
                     agent {label 'agent'}
                     steps {
                         unstash 'code' 
@@ -98,57 +61,134 @@ pipeline {
                         hostname
                         echo ${env.WORKSPACE}
                         """
-                        echo 'Ejecutando pruebas unitarias'
-                        bat """
-                        venv\\Scripts\\python -m pytest --junitxml=result-unit.xml test\\unit
-                        """
+                        catchError(buildResult: 'SUCCESS', stageResult: 'SUCCESS') {
+                            echo 'Ejecutando pruebas de servicio'
+                            script {
+                                bat """
+                                set FLASK_APP=app.api:api_application
+                                start /B venv\\Scripts\\python -m flask run --port=5000
+                                for /L %%i in (1,1,10) do (
+                                    netstat -an | findstr :5000 && exit 0 || ping -n 2 127.0.0.1 > nul
+                                )
+                                """
+                            }
+                            bat """
+                            echo "Ejecutando pruebas..."
+                            venv\\Scripts\\python -m pytest --junitxml=result-tests.xml test\\rest
+                            """
+                            junit '**/result-tests.xml'
+                        }
                     }
                 }
-                stage('Service testing') {
+                stage('Static') {
                     agent {label 'agent'}
                     steps {
-                        unstash 'code' 
+                        unstash 'code'
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            bat """
+                            whoami
+                            hostname
+                            echo ${env.WORKSPACE}
+                            echo 'Ejecutando análisis de código estático'
+                            venv\\Scripts\\flake8 --format=pylint app > flake8.out --exit-zero 
+                            """
+                            script {
+                                echo "Resultados de flake8:"
+                                if (fileExists('flake8.out')) {
+                                    recordIssues tools: [
+                                        flake8(name: 'Flake8', pattern: 'flake8.out')
+                                    ], 
+                                    qualityGates: [
+                                        [threshold: 8, type: 'TOTAL', unstable: true],
+                                        [threshold: 10, type: 'TOTAL', unstable: false] 
+                                    ]
+                                } else {
+                                    echo "No se encuentra el archivo flake8.out"
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('Security Test') {
+                    agent {label 'agent'}
+                    steps {
+                        unstash 'code'
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            bat """
+                            whoami
+                            hostname
+                            echo ${env.WORKSPACE}
+                            echo 'Ejecutando pruebas de seguridad'
+                            venv\\Scripts\\bandit -r . -f custom -o bandit.out --msg-template "{abspath}:{line}: {severity}: {test_id}: {msg}" --exit-zero
+                            """
+                            script {
+                                echo "Resultados de bandit:"
+                                if (fileExists('bandit.out')) {
+                                    recordIssues tools: [
+                                        pyLint(pattern: 'bandit.out')
+                                    ],
+                                    qualityGates: [
+                                        [threshold: 2, type: 'TOTAL', unstable: true],
+                                        [threshold: 4, type: 'TOTAL', unstable: false]
+                                    ]
+                                } else {
+                                    echo "No se encuentra el archivo bandit.out"
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('Coverage') {
+                    agent {label 'agent'}
+                    steps {
+                        unstash 'code'
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            bat """
+                            whoami
+                            hostname
+                            echo ${env.WORKSPACE}
+                            echo 'Ejecutando pruebas de cobertura'
+                            venv\\Scripts\\coverage report
+                            venv\\Scripts\\coverage xml -o coverage-report.xml
+                            """
+                            script {
+                                if (fileExists('coverage-report.xml')) {
+                                    echo "Resultados de coverage:"
+                                    cobertura coberturaReportFile: 'coverage.xml', onlyStable: false,
+                                    lineCoverageTargets: '95,85,0',
+                                    conditionalCoverageTargets: '90,80,0'
+                                } else {
+                                    echo "No se encuentra el archivo coverage-report.xml"
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('Performance') {
+                    agent {label 'agent'}
+                    steps {
+                        unstash 'code'
                         bat """
                         whoami
                         hostname
                         echo ${env.WORKSPACE}
+                        echo 'Ejecutando pruebas de carga'
+                        set FLASK_APP=app.api:api_application
+                        start /B venv\\Scripts\\python -m flask run --port=5000
+                        if exist jmeter_report (rmdir /S /Q jmeter_report)
+                        if exist test-plan.jtl (del test-plan.jtl)
+                        ${env.JMETER_PATH} -n -t test\\jmeter\\test-plan.jmx -l test-plan.jtl -e -o jmeter_report
                         """
-                        echo 'Ejecutando pruebas de servicio'
                         script {
-                            bat """
-                            set FLASK_APP=app.api:api_application
-                            start /B venv\\Scripts\\python -m flask run --port=5000
-                            for /L %%i in (1,1,10) do (
-                                netstat -an | findstr :5000 && exit 0 || ping -n 2 127.0.0.1 > nul
-                            )
-                            """
+                            if (fileExists('test-plan.jtl')) {
+                                echo "Resultados de jmeter:"
+                                perfReport sourceDataFiles: 'test-plan.jtl'
+                            } else {
+                                echo "No se encuentra el archivo test-plan.jtl"
+                            }
                         }
-                        script {
-                            bat """
-                            start /B java -jar ${env.WIREMOCK_LOCAL} --port 9090 --root-dir=${env.WIREMOCK_DIR}
-                            for /L %%i in (1,1,10) do (
-                                netstat -an | findstr :9090 && exit 0 || ping -n 2 127.0.0.1 > nul
-                            )
-                            """
-                        }
-                        bat """
-                        echo "Ejecutando pruebas..."
-                        venv\\Scripts\\python -m pytest --junitxml=result-tests.xml test\\rest
-                        """
                     }
                 }
-            }
-        }
-
-        stage('Results JUnit') {
-            agent {label 'agent'}
-            steps {
-                bat """
-                whoami
-                hostname
-                echo ${env.WORKSPACE}
-                """
-                junit '**/result-*.xml'
             }
         }
 
@@ -157,7 +197,6 @@ pipeline {
             steps {
                 script {
                     bat 'taskkill /f /im python.exe || echo "No Flask process running"'
-                    bat 'taskkill /f /im java.exe || echo "No Wiremock process running"'
                 }
                 script {
                     echo "Cleaning workspace"
